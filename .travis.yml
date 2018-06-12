@@ -1,0 +1,16 @@
+sudo: required
+
+services:
+  - docker
+
+install: true
+
+
+before_script:
+  - docker build -t wt_image .
+  - docker run -d --name wt_app --env-file ./env_vars wt_image
+  - docker ps -a
+
+script:
+  - docker exec -it wt_app bash -c "pytest"
+
