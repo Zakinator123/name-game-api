@@ -1,0 +1,4 @@
+DB_HOST=test_database
+DB_USER=root
+DB_PASS=test
+DB_DATABASE=name_game
