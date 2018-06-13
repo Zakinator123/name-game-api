@@ -14,6 +14,7 @@ before_script:
     "CREATE DATABASE name_game CHARACTER SET utf8;
     CREATE USER 'test_user' IDENTIFIED BY 'test';
     GRANT ALL PRIVILEGES ON name_game.* TO 'test_user'@'%';
+    USE name_game;
     CREATE TABLE user(username VARCHAR(96) PRIMARY KEY, password VARCHAR(256));"
 
   - docker run -d --link test_database:test_database --name wt_app --env-file ./env_vars wt_image
