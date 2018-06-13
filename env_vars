@@ -1,4 +1,4 @@
-TESTDB_HOSTNAME=test_database
-TESTDB_USERNAME=test_user
-TESTDB_PASSWORD=test
-TESTDB_DBNAME=name_game
+RDS_HOSTNAME=test_database
+RDS_USERNAME=test_user
+RDS_PASSWORD=test
+RDS_DB_NAME=name_game
