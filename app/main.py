@@ -16,20 +16,45 @@ bcrypt = Bcrypt(app)
 
 @app.route("/")
 def home():
-    x = bcrypt.generate_password_hash('test').decode('utf-8')
-    bool = bcrypt.check_password_hash(x, 'test')
-    return (str(bool))
+    return ("Welcome to the Name Game API!")
 
 
 @app.route("/test_db_connection")
 def db():
     db = MySQLdb.connect(os.environ['TESTDB_HOSTNAME'], os.environ['TESTDB_USERNAME'], os.environ['TESTDB_PASSWORD'], os.environ['TESTDB_DBNAME'])
     cursor = db.cursor(MySQLdb.cursors.DictCursor)
-    sql = "SELECT * FROM user"
+    sql = "SHOW TABLES"
     cursor.execute(sql)
+    rowcount = cursor.rowcount
     db.close()
-    test = cursor.fetchall()
-    return jsonify(test)
+    return jsonify({'table_count': rowcount})
+
+
+@app.route("/signup", methods=['POST'])
+def signup():
+
+    if 'username' in request.get_json() and 'password' in request.get_json():
+        username = request.get_json()['username']
+        password = request.get_json()['password']
+    else:
+        return jsonify({'status': 'Error', 'message': 'Appropriate signup credentials were not provided.'})
+
+
+    db = MySQLdb.connect(os.environ['TESTDB_HOSTNAME'], os.environ['TESTDB_USERNAME'], os.environ['TESTDB_PASSWORD'], os.environ['TESTDB_DBNAME'])
+    cursor = db.cursor(MySQLdb.cursors.DictCursor)
+
+    # Check if username already exists
+    sql = "SELECT * FROM user WHERE username=%s"
+    cursor.execute(sql, (username,))
+    if cursor.rowcount > 0:
+        return jsonify({'status': 'Error', 'message': 'Username already taken.'})
+
+    sql = "INSERT INTO user (username, password) VALUES (%s, %s)"
+    cursor.execute(sql, (username, password))
+    db.commit()
+    db.close()
+
+    return jsonify({'status': 'Success', 'message': 'User successfully created!'})
 
 
 if __name__ == "__main__":
