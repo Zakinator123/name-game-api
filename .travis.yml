@@ -5,12 +5,19 @@ services:
 
 install: true
 
-
 before_script:
+  - docker run --name test_database -d -e MYSQL\_ROOT\_PASSWORD='test' mysql
   - docker build -t wt_image .
-  - docker run -d --name wt_app --env-file ./env_vars wt_image
+  - >
+    docker run -it --name mysql-cmdline --link test_database:test_database mysql:5.7.14
+    mysql -uroot -p'test' -h test_database -v -e
+    "CREATE DATABASE name_game CHARACTER SET utf8;
+    CREATE USER 'test_user' IDENTIFIED BY 'test';
+    GRANT ALL PRIVILEGES ON name_game.* TO 'test_user'@'%';
+    CREATE TABLE user(username VARCHAR(96) PRIMARY KEY, password VARCHAR(256));"
+
+  - docker run -d --link test_database:test_database --name wt_app --env-file ./env_vars wt_image
   - docker ps -a
 
 script:
   - docker exec -it wt_app bash -c "pytest"
-

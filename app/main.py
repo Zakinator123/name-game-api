@@ -16,9 +16,21 @@ bcrypt = Bcrypt(app)
 
 @app.route("/")
 def home():
-    return ("Welcome to the Name Game API!")
+    x = bcrypt.generate_password_hash('test').decode('utf-8')
+    bool = bcrypt.check_password_hash(x, 'test')
+    return (str(bool))
+
+
+@app.route("/test_db_connection")
+def db():
+    db = MySQLdb.connect(os.environ['TESTDB_HOSTNAME'], os.environ['TESTDB_USERNAME'], os.environ['TESTDB_PASSWORD'], os.environ['TESTDB_DBNAME'])
+    cursor = db.cursor(MySQLdb.cursors.DictCursor)
+    sql = "SELECT * FROM user"
+    cursor.execute(sql)
+    db.close()
+    test = cursor.fetchall()
+    return jsonify(test)
 
 
 if __name__ == "__main__":
-    # Only for debugging while developing
     app.run(host='0.0.0.0', debug=True, port=80)

@@ -15,4 +15,8 @@ def client(request):
 
 def test_home(client):
     response = client.get('/')
-    assert b'Welcome to the Name Game API!' in response.data
+    assert b'True' in response.data
+
+def test_db_connected(client):
+    response = client.get('/test_db_connection')
+    assert b'[]' in response.data
