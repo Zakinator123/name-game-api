@@ -27,4 +27,4 @@ script:
 # Trigger a Dockerhub to build image after successful Travis build.
 # This then triggers AWS Elastic Beanstalk to repull the image
 after_success: |-
-  - curl -H "Content-Type: application/json" --data '{"build": true}' -X POST https://registry.hub.docker.com/u/zakinator123/name-game/trigger/d0301aa8-39ed-423a-908b-52f75761be11/
+  curl -H "Content-Type: application/json" --data '{"build": true}' -X POST https://registry.hub.docker.com/u/zakinator123/name-game/trigger/d0301aa8-39ed-423a-908b-52f75761be11/
