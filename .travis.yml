@@ -6,10 +6,10 @@ services:
 install: true
 
 before_script:
-  - docker run --name test_database -d -e MYSQL\_ROOT\_PASSWORD='test' mysql
+  - docker run --name test_database -d -e MYSQL\_ROOT\_PASSWORD='test' mysql:5.7
   - docker build -t wt_image .
   - >
-    docker run -it --name mysql-cmdline --link test_database:test_database mysql:5.7.14
+    docker run -it --name mysql-cmdline --link test_database:test_database mysql:5.7
     mysql -uroot -p'test' -h test_database -v -e
     "CREATE DATABASE name_game CHARACTER SET utf8;
     CREATE USER 'test_user' IDENTIFIED BY 'test';
