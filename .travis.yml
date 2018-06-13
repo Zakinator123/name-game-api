@@ -24,7 +24,6 @@ before_script:
 script:
   - docker exec -it wt_app bash -c "pytest"
 
-# Trigger a Dockerhub to build image after successful Travis build.
-# This then triggers AWS Elastic Beanstalk to repull the image
+# Trigger Dockerhub to build image after successful Travis build.
 after_success: |-
   curl -H "Content-Type: application/json" --data '{"build": true}' -X POST https://registry.hub.docker.com/u/zakinator123/name-game/trigger/d0301aa8-39ed-423a-908b-52f75761be11/
