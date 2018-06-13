@@ -15,10 +15,16 @@ before_script:
     CREATE USER 'test_user' IDENTIFIED BY 'test';
     GRANT ALL PRIVILEGES ON name_game.* TO 'test_user'@'%';
     USE name_game;
-    CREATE TABLE user(username VARCHAR(96) PRIMARY KEY, password VARCHAR(256));"
+    CREATE TABLE user(username VARCHAR(96) PRIMARY KEY, password VARCHAR(256));
+    CREATE TABLE authenticator(token VARCHAR(96) PRIMARY KEY, username VARCHAR(96),  timestamp VARCHAR (20), FOREIGN KEY (username) REFERENCES user(username));"
 
   - docker run -d --link test_database:test_database --name wt_app --env-file ./env_vars wt_image
   - docker ps -a
 
 script:
   - docker exec -it wt_app bash -c "pytest"
+
+# Trigger a Dockerhub to build image after successful Travis build.
+# This then triggers AWS Elastic Beanstalk to repull the image
+after_success:
+  - curl -H "Content-Type: application/json" --data '{"build": true}' -X POST https://registry.hub.docker.com/u/zakinator123/name-game/trigger/d0301aa8-39ed-423a-908b-52f75761be11/
