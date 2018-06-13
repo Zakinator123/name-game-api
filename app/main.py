@@ -127,19 +127,93 @@ def login():
     else:
         return jsonify({'status': 'Error', 'message': 'Incorrect password.'})
 
+# TODO: Call the stop_game method from this view once it's implemeneted.
+@app.route("/logout", methods=['POST'])
+def logout():
+    post_body = request.get_json()
 
+    if 'token' in post_body:
+        token = post_body['token']
+    else:
+        return jsonify({'status': 'Error', 'message': "No authenticator token was provided."})
+
+    db = MySQLdb.connect(os.environ['RDS_HOSTNAME'], os.environ['RDS_USERNAME'], os.environ['RDS_PASSWORD'],
+                         os.environ['RDS_DB_NAME'])
+    cursor = db.cursor(MySQLdb.cursors.DictCursor)
+    sql = "DELETE FROM authenticator WHERE token=%s"
+    cursor.execute(sql, (token,))
+    db.commit()
+    db.close()
+
+    return jsonify({'status': 'Success', 'message': 'Successfully logged out.'})
 
 if __name__ == "__main__":
     app.run(host='0.0.0.0', debug=True, port=80)
 
 
-# #     # Get current datetime (truncating decimal seconds)
-#     then = str(datetime.datetime.now())[:19]
-#     time.sleep(3)
-#
-#     now = datetime.datetime.now()
-#
-#     then_datetime = datetime.datetime.strptime(then, '%Y-%m-%d %H:%M:%S')
-#
-#     now = time.mktime(now.timetuple())
-#     then = time.mktime(then_datetime.timetuple())
+def authenticated_required(f):
+    @wraps(f)
+    def check_authenticator(*args, **kwargs):
+        post_body = request.get_json()
+
+        if 'token' in post_body:
+            token = post_body['token']
+        else:
+            return jsonify({'status': 'Error', 'message': "No authenticator token was provided. Please use the login API to receive one."})
+
+        db = MySQLdb.connect(os.environ['RDS_HOSTNAME'], os.environ['RDS_USERNAME'], os.environ['RDS_PASSWORD'],
+                             os.environ['RDS_DB_NAME'])
+        cursor = db.cursor(MySQLdb.cursors.DictCursor)
+
+        # Check if user is already logged in:
+        sql = "SELECT * FROM authenticator WHERE token=%s" % (post_body['token'])
+        cursor.execute(sql)
+        db.close()
+
+        if cursor.rowcount > 0:
+            authenticator_data = cursor.fetchone()
+
+            authenticator_timestamp = authenticator_data['timestamp']
+
+            then = datetime.datetime.strptime(authenticator_timestamp, '%Y-%m-%d %H:%M:%S')
+            now = datetime.datetime.now()
+            then = time.mktime(then.timetuple())
+            now = time.mktime(now.timetuple())
+
+            # If the authenticator token's age is less than 3 minutes, refresh the token's age and continue.
+            if ((int(now - then) / 60) < 3):
+                sql = "UPDATE authenticator SET timestamp=%s WHERE token=%s)"
+                cursor.execute(sql, (str(now)[:19], authenticator_data['token']))
+                db.commit()
+                db.close()
+
+                return f(*args, **kwargs)
+            else:
+                return jsonify({'Status': 'Error', 'message': 'Session Expired.'})
+        else:
+            return jsonify({'Status': 'Error', 'message': 'Invalid authentication.'})
+    return check_authenticator
+
+
+@app.route("/start_game", methods=['POST'])
+@authenticated_required
+def start_game():
+    pass
+
+@app.route("/stop_game", methods=['POST'])
+@authenticated_required
+def stop_game():
+    pass
+
+
+@app.route("/submit_answer", methods=['POST'])
+@authenticated_required
+def submit_answer():
+    pass
+
+
+@app.route("/get_game_leaderboard", methods=['POST'])
+@authenticated_required
+def get_game_leaderboard():
+    pass
+
