@@ -18,12 +18,12 @@ app = Flask(__name__)
 CORS(app)
 bcrypt = Bcrypt(app)
 
-
+# API Dummy Home Page
 @app.route("/")
 def home():
     return ("Welcome to the Name Game API! This is the API Homepage")
 
-
+# API Dummy DB Connection Test
 @app.route("/test_db_connection")
 def db():
     db = MySQLdb.connect(os.environ['RDS_HOSTNAME'], os.environ['RDS_USERNAME'], os.environ['RDS_PASSWORD'],
@@ -38,6 +38,24 @@ def db():
 
 @app.route("/signup", methods=['POST'])
 def signup():
+    """
+        Takes a username and password and saves it to database if username is not taken. Does not log user in.
+
+        POST parameters (application/json encoding)
+        ----------
+        {
+            "username": <A username string>,
+            "password": <A password string>,
+        }
+
+        Returns (application/json encoding)
+        -------
+        {
+            "status" : <"Success" | "Error">,
+            "message" : <A string with helpful error information>
+        }
+    """
+
     if 'username' in request.get_json() and 'password' in request.get_json():
         username = request.get_json()['username']
         password = request.get_json()['password']
@@ -65,6 +83,25 @@ def signup():
 
 @app.route("/login", methods=['POST'])
 def login():
+    """
+        Takes a username and password. If credentials are correct, returns an authenticator token.
+
+        POST parameters (application/json encoding)
+        ----------
+        {
+            "username": <A username string>,
+            "password": <A password string>,
+        }
+
+        Returns (application/json encoding)
+        -------
+        {
+            "status" : <"Success" | "Error">,
+            "message" : <A string with helpful error information>,
+            "token" : <Some long random string>
+        }
+    """
+
     if 'username' in request.get_json() and 'password' in request.get_json():
         username = request.get_json()['username']
         plain_text_password = request.get_json()['password']
@@ -133,34 +170,25 @@ def login():
         return jsonify({'status': 'Error', 'message': 'Incorrect password.'})
 
 
-# TODO: Call the stop_game method from this view once it's implemeneted.
-@app.route("/logout", methods=['POST'])
-def logout():
-    post_body = request.get_json()
-
-    if 'token' in post_body:
-        token = post_body['token']
-    else:
-        return jsonify({'status': 'Error', 'message': "No authenticator token was provided."})
-
-    db = MySQLdb.connect(os.environ['RDS_HOSTNAME'], os.environ['RDS_USERNAME'], os.environ['RDS_PASSWORD'],
-                         os.environ['RDS_DB_NAME'])
-    cursor = db.cursor(MySQLdb.cursors.DictCursor)
-    sql = "DELETE FROM authenticator WHERE token=%s"
-    cursor.execute(sql, (token,))
-    db.commit()
-    db.close()
-
-    return jsonify({'status': 'Success', 'message': 'Successfully logged out.'})
-
-
-if __name__ == "__main__":
-    app.run(host='0.0.0.0', debug=True, port=80)
-
-
 def authenticated_required(f):
     @wraps(f)
     def check_authenticator(*args, **kwargs):
+        """
+            Decorator for other views that require a user to be logged in.
+            Takes a token and determines if it's valid (e.g. not expired).
+             If token valid, the desired API endpoint will proceed to execute, otherwise returns an error.
+
+            POST parameters (application/json encoding)
+            ----------
+            {
+                "token" : <A token string>
+            }
+
+            Returns
+            -------
+            If the presented token is valid, this function returns the original function a user tried to
+            execute (it is not an endpoint itself). Otherwise, it returns an error (in application/json encoding).
+        """
         post_body = request.get_json()
 
         if 'token' in post_body:
@@ -197,29 +225,97 @@ def authenticated_required(f):
 
                 return f(*args, **kwargs)
             else:
-                return jsonify({'Status': 'Error', 'message': 'Session Expired.'})
+                return jsonify({'status': 'Error', 'message': 'Session Expired.'})
         else:
-            return jsonify({'Status': 'Error', 'message': 'Invalid authentication token.'})
+            return jsonify({'status': 'Error', 'message': 'Invalid authentication token.'})
 
     return check_authenticator
 
 
-'''
-The start_game endpoint stops any other game sessions the user had and starts a new session.
 
-/// Parameters
-A post body
-The game type of the new session is standard unless the user provides a game type name in the POST body.
-'''
+@app.route("/logout", methods=['POST'])
+@authenticated_required
+def logout():
+    """
+        Takes an authenticator token. Deletes it from database if it exists.
+
+        POST parameters (application/json encoding)
+        ----------
+        {
+            "token": <A token string>
+        }
+
+        Returns (application/json encoding)
+        -------
+        {
+            "status" : <"Success" | "Error">,
+            "message" : <A string with helpful error information>,
+        }
+    """
+    post_body = request.get_json()
+
+    token = post_body['token']
+    __stop_game(token)
+
+    db = MySQLdb.connect(os.environ['RDS_HOSTNAME'], os.environ['RDS_USERNAME'], os.environ['RDS_PASSWORD'],
+                         os.environ['RDS_DB_NAME'])
+    cursor = db.cursor(MySQLdb.cursors.DictCursor)
+    sql = "DELETE FROM authenticator WHERE token=%s"
+    cursor.execute(sql, (token,))
+    db.commit()
+    db.close()
+
+    return jsonify({'status': 'Success', 'message': 'Successfully logged out.'})
+
+
+
 
 @app.route("/game", methods=['POST'])
 @authenticated_required
 def game():
+    """
+        This endpoint contains the primary name-game functionality. It takes two parameters, a token and either a
+        'game_type' (if the user wants to start a new game session) or an 'answer' (if the user wants to submit an answer
+        to the current question in his/her current active game session) and returns the output below depending on the input.
+
+        POST parameters (application/json encoding)
+        ----------
+        {
+            "token": <A token string>,
+            <"game_type" | "answer"> : <string containing either an answer id or the name of a new game type ("standard" | "reverse" | "matt")>
+        }
+
+        Returns (application/json encoding)
+        -------
+        {
+            "message" : <A string with helpful error/success information>,
+            "status" : <"Success" | "Error">,
+            "last_answer_submission": <"None" | "Correct" | "Incorrect">,
+            "game_type": <game_type string>,
+            "question": {
+                "choice_type": <"image" | "text">,
+                "choices": [
+                    {
+                        "choice": < Dictionary/JSON Object containing image information | Full Name >,
+                        "id": <Some ID uniquely identifying the choice"
+                    },
+                    ...
+                ],
+                "question_image": {<If the choice_type is text (reverse mode), then image information will be in this dictionary>},
+                "question_text": <String containing question text>
+            },
+            "session_number_right": <number>,
+            "session_number_wrong": <number>,
+            "status": <"Success" | "Error">
+        }
+    """
+
     post_body = request.get_json()
 
     db = MySQLdb.connect(os.environ['RDS_HOSTNAME'], os.environ['RDS_USERNAME'], os.environ['RDS_PASSWORD'],
                          os.environ['RDS_DB_NAME'])
     cursor = db.cursor(MySQLdb.cursors.DictCursor)
+
     # Get username
     cursor.execute("SELECT * FROM authenticator WHERE token=%s", (post_body['token'], ))
     authenticator_data = cursor.fetchone()
@@ -267,8 +363,7 @@ def game():
                 })
 
     # At this point, the user either is starting a new game, or is submitting a correct answer
-    # In both cases, we must provide the user with new question data, which is calculated below.
-
+    # In both cases, we must provide the user with a new question+choices - this is calculated below.
 
     # If game type data wasn't retrieved above, then this user has an active game session.
     # Hence, we can retrieve the game type data via the authenticator.
@@ -280,6 +375,7 @@ def game():
         cursor.execute(sql, (game_name, ))
         game_type_data = cursor.fetchone()
 
+    # Willowtree API call. Perhaps should be in a try/except?
     r = requests.get('https://www.willowtreeapps.com/api/v1.0/profiles')
     employees = r.json()
 
@@ -385,15 +481,68 @@ def game():
 @app.route("/stop_game", methods=['POST'])
 @authenticated_required
 def stop_game():
-    pass
+    """
+        Takes an authenticator token and sets any game sessions associated with you to NOT be current anymore.
+
+        POST parameters (application/json encoding)
+        ----------
+        {
+            "token": <A token string>
+        }
+
+        Returns (application/json encoding)
+        -------
+        {
+            "status" : <"Success" | "Error">,
+            "message" : <A string with helpful error information>,
+        }
+    """
+    post_body = request.get_json()
+    token = post_body['token']
+
+    __stop_game(token)
+    return jsonify({"status" : "Success", "message" : "You have no active game sessions."})
 
 
-@app.route("/get_game_leaderboard", methods=['POST'])
-@authenticated_required
-def get_game_leaderboard():
-    pass
+@app.route("/leaderboard", methods=['GET'])
+def leaderboard():
+    """
+        No parameters required. Returns an ordered list (descending) of sessions based on their score, which
+        is calculated by subtracting the number of wrong questions from the number of right questions.
+
+        Returns (application/json encoding)
+        -------
+        {
+            "status" : <"Success" | "Error">,
+            "message" : <A string with helpful error information>,
+            "leaderboard" : [
+                {
+                    "game_type": <game type>,
+                    "number_right": <integer>,
+                    "number_wrong": <integer>,
+                    "session_id": <id>,
+                    "username": <username string>
+                },
+                { ... },
+                ...
+            ]
+        }
+    """
+    db = MySQLdb.connect(os.environ['RDS_HOSTNAME'], os.environ['RDS_USERNAME'], os.environ['RDS_PASSWORD'],
+                         os.environ['RDS_DB_NAME'])
+    cursor = db.cursor(MySQLdb.cursors.DictCursor)
+
+    sql = "SELECT username, game_type, number_right, number_wrong, session_id FROM game_session ORDER BY (number_right - number_wrong) LIMIT 20"
+    cursor.execute(sql)
+
+    if cursor.rowcount == 0:
+        return jsonify({'status': 'Error', 'message': 'There was no leaderboard to display.'})
+    else:
+        leaderboard = cursor.fetchall()
+        return jsonify({'status' : "Success", 'message' : "Top 20 game sessions in order (score based on number_right subtracted from number_wrong).", 'leaderboard' : leaderboard})
 
 
+# This is a helper function for the stop_game endpoint above.
 def __stop_game(token):
     db = MySQLdb.connect(os.environ['RDS_HOSTNAME'], os.environ['RDS_USERNAME'], os.environ['RDS_PASSWORD'],
                          os.environ['RDS_DB_NAME'])
@@ -405,12 +554,14 @@ def __stop_game(token):
 
     sql = "UPDATE game_session SET current_session=0 WHERE username=%s"
     cursor.execute(sql, (username, ))
+    db.commit()
+    db.close()
+
+    return True
 
 
-
-
-
-
+if __name__ == "__main__":
+    app.run(host='0.0.0.0', debug=True, port=80)
 
 
 

@@ -11,7 +11,9 @@ def client(request):
     db = MySQLdb.connect(os.environ['RDS_HOSTNAME'], os.environ['RDS_USERNAME'], os.environ['RDS_PASSWORD'],
                          os.environ['RDS_DB_NAME'])
     cursor = db.cursor(MySQLdb.cursors.DictCursor)
-    cursor.execute("TRUNCATE TABLE authenticator")
+    cursor.execute("DELETE FROM authenticator")
+    db.commit()
+    cursor.execute("DELETE FROM game_session")
     db.commit()
     db.close()
 
@@ -19,9 +21,9 @@ def client(request):
         db = MySQLdb.connect(os.environ['RDS_HOSTNAME'], os.environ['RDS_USERNAME'], os.environ['RDS_PASSWORD'],
                              os.environ['RDS_DB_NAME'])
         cursor = db.cursor(MySQLdb.cursors.DictCursor)
-        cursor.execute("TRUNCATE TABLE authenticator")
+        cursor.execute("DELETE FROM authenticator")
         db.commit()
-        cursor.execute("TRUNCATE TABLE game_session")
+        cursor.execute("DELETE FROM game_session")
         db.commit()
         cursor.execute("DELETE FROM user")
         db.commit()
