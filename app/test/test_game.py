@@ -21,6 +21,8 @@ def client(request):
         cursor = db.cursor(MySQLdb.cursors.DictCursor)
         cursor.execute("TRUNCATE TABLE authenticator")
         db.commit()
+        cursor.execute("TRUNCATE TABLE game_session")
+        db.commit()
         cursor.execute("DELETE FROM user")
         db.commit()
         db.close()
@@ -29,81 +31,78 @@ def client(request):
     return test_client
 
 
-def test_login(client):
+def test_new_standard_game(client):
     db = MySQLdb.connect(os.environ['RDS_HOSTNAME'], os.environ['RDS_USERNAME'], os.environ['RDS_PASSWORD'],
                          os.environ['RDS_DB_NAME'])
     cursor = db.cursor(MySQLdb.cursors.DictCursor)
 
     cursor.execute("DELETE FROM user")
     db.commit()
+    cursor.execute("DELETE FROM game_session")
+    db.commit()
     db.close()
 
-    # TODO: Figure out how to use bcrypt here so that I don't have to use the signup endpoint while testing the login endpoint
     username = 'flask'
     password = 'willowtree'
     client.post('/signup', json={'username': username, 'password': password})
-
     response = client.post('/login', json={'username': username, 'password': password})
-    assert ('token' in (response.get_json()) and response.get_json()['status'] == 'Success')
+    token = response.get_json()['token']
 
-def test_repeated_login(client):
+    response = client.post('/game', json={'token': token, 'game_type': 'standard'})
+    choice_list = response.get_json()['question']['choices']
 
+    assert (response.get_json()['status'] == 'Success' and len(choice_list) == 6)
+
+
+def test_game_answer(client):
     db = MySQLdb.connect(os.environ['RDS_HOSTNAME'], os.environ['RDS_USERNAME'], os.environ['RDS_PASSWORD'],
                          os.environ['RDS_DB_NAME'])
     cursor = db.cursor(MySQLdb.cursors.DictCursor)
 
     cursor.execute("DELETE FROM user")
     db.commit()
+    cursor.execute("DELETE FROM game_session")
+    db.commit()
     db.close()
 
-    # TODO: Figure out how to use bcrypt here so that I don't have to use the signup endpoint while testing the login endpoint
     username = 'flask'
     password = 'willowtree'
     client.post('/signup', json={'username': username, 'password': password})
-
     response = client.post('/login', json={'username': username, 'password': password})
+    token = response.get_json()['token']
+
+    response = client.post('/game', json={'token': token, 'game_type': 'standard'})
+    choice_list = response.get_json()['question']['choices']
+
+    random_possibly_correct_answer = choice_list[3]['id']
+    response = client.post('/game', json={'token': token, 'answer': random_possibly_correct_answer})
+
+    assert (response.get_json()['status'] == 'Success' and response.get_json()['message'] == 'A correct answer was submitted, and a new question has been created.' or response.get_json()['message'] == 'An incorrect answer was submitted, and the same question has been returned.')
+
+def test_new_matt_game(client):
+    db = MySQLdb.connect(os.environ['RDS_HOSTNAME'], os.environ['RDS_USERNAME'], os.environ['RDS_PASSWORD'],
+                         os.environ['RDS_DB_NAME'])
+    cursor = db.cursor(MySQLdb.cursors.DictCursor)
+
+    cursor.execute("DELETE FROM user")
+    db.commit()
+    cursor.execute("DELETE FROM game_session")
+    db.commit()
+    db.close()
+
+    username = 'flask'
+    password = 'willowtree'
+    client.post('/signup', json={'username': username, 'password': password})
     response = client.post('/login', json={'username': username, 'password': password})
+    token = response.get_json()['token']
 
-    assert ('token' in (response.get_json()) and response.get_json()['status'] == 'Success')
+    response = client.post('/game', json={'token': token, 'game_type': 'matt'})
+    choice_list = response.get_json()['question']['choices']
 
+    count = 0
+    pass_test = True
+    for choice in choice_list:
+        if 'matt' in choice['choice']['alt'].lower() or 'matt' in choice['choice']['url']:
+            count = count + 1
 
-
-def test_invalid_username_login(client):
-    db = MySQLdb.connect(os.environ['RDS_HOSTNAME'], os.environ['RDS_USERNAME'], os.environ['RDS_PASSWORD'],
-                         os.environ['RDS_DB_NAME'])
-    cursor = db.cursor(MySQLdb.cursors.DictCursor)
-
-    cursor.execute("DELETE FROM user")
-    db.commit()
-    db.close()
-
-    username = 'flask'
-    password = 'willowtree'
-    client.post('/signup', json={'username': username, 'password': password})
-
-    response = client.post('/login', json={'username': 'BOGUS USERNAME', 'password': password})
-    assert (response.get_json()['status'] == 'Error' and response.get_json()['message'] == "User does not exist.")
-
-
-
-def test_invalid_password_login(client):
-    db = MySQLdb.connect(os.environ['RDS_HOSTNAME'], os.environ['RDS_USERNAME'], os.environ['RDS_PASSWORD'],
-                         os.environ['RDS_DB_NAME'])
-    cursor = db.cursor(MySQLdb.cursors.DictCursor)
-
-    cursor.execute("DELETE FROM user")
-    db.commit()
-    db.close()
-
-    username = 'flask'
-    password = 'willowtree'
-    client.post('/signup', json={'username': username, 'password': password})
-
-    response = client.post('/login', json={'username': username, 'password': 'BOGUS PASSWORD'})
-    assert (response.get_json()['status'] == 'Error' and response.get_json()['message'] == "Incorrect password.")
-
-
-def test_missing_credentials(client):
-    response = client.post('/login', json={'useless_input': 'BOGUS'})
-    assert (response.get_json()['status'] == 'Error' and response.get_json()['message'] == "Appropriate login credentials were not provided.")
-
+    assert count > 4

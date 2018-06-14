@@ -16,7 +16,13 @@ def client(request):
     db.close()
 
     def teardown():
-        pass
+        db = MySQLdb.connect(os.environ['RDS_HOSTNAME'], os.environ['RDS_USERNAME'], os.environ['RDS_PASSWORD'], os.environ['RDS_DB_NAME'])
+        cursor = db.cursor(MySQLdb.cursors.DictCursor)
+        cursor.execute("TRUNCATE TABLE authenticator")
+        db.commit()
+        cursor.execute("DELETE FROM user")
+        db.commit()
+        db.close()
 
     request.addfinalizer(teardown)
     return test_client

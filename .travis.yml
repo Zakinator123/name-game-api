@@ -16,7 +16,12 @@ before_script:
     GRANT ALL PRIVILEGES ON name_game.* TO 'test_user'@'%';
     USE name_game;
     CREATE TABLE user(username VARCHAR(96) PRIMARY KEY, password VARCHAR(256));
-    CREATE TABLE authenticator(token VARCHAR(96) PRIMARY KEY, username VARCHAR(96),  timestamp VARCHAR (20), FOREIGN KEY (username) REFERENCES user(username));"
+    CREATE TABLE authenticator(token VARCHAR(96) PRIMARY KEY, username VARCHAR(96),  timestamp VARCHAR (20), FOREIGN KEY (username) REFERENCES user(username));
+    CREATE TABLE game_type(game_name VARCHAR(96) NOT NULL PRIMARY KEY, choice_type VARCHAR(96), job_title_filter VARCHAR(96), name_filter VARCHAR(96), num_choices INT);
+    CREATE TABLE game_session(session_id INT NOT NULL AUTO_INCREMENT PRIMARY KEY, username varchar(96), game_type varchar(96), number_right INT, number_wrong INT, latest_question_timestamp VARCHAR(96), current_question TEXT, current_session BOOL, current_question_answer VARCHAR(96), FOREIGN KEY (username) REFERENCES user(username), FOREIGN KEY (game_type) REFERENCES game_type(game_name));
+    INSERT INTO game_type (game_name, choice_type, num_choices) VALUES ('standard', 'image', 6);
+    INSERT INTO game_type (game_name, choice_type, num_choices) VALUES ('reverse', 'text', 6);
+    INSERT INTO game_type (game_name, choice_type, name_filter, num_choices) VALUES ('matt', 'image', 'matt', 6);"
 
   - docker run -d --link test_database:test_database --name wt_app --env-file ./env_vars wt_image
   - docker ps -a

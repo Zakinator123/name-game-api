@@ -12,7 +12,8 @@ RUN pip install --upgrade pip \
 	&& pip install -U "flask-cors" \
  	&& pip install -U "pytest" \
  	&& pip install bcrypt \
-	&& pip install -U "flask-bcrypt"
+	&& pip install -U "flask-bcrypt" \
+	&& pip install "requests"
 
 
 COPY ./app /app
