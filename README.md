@@ -3,7 +3,7 @@
 <h5 style="text-align: center"> https://api.the-name-game.com </h4>
 
 
-The Name Game API is a simple RESTful JSON API that can be used together with any simple client (e.g. a mobile app, or web app) to build a full game . The API manages user authentication/sessions, game question formulation based on game modes, answer submission handling, user game session statistics tracking, and more.
+The Name Game API is a simple RESTful JSON API that can be used together with any simple client (e.g. a mobile app, or web app) to build a full game. The API manages user authentication/sessions, game question formulation based on game modes, answer submission handling, user game session statistics tracking, and more.
 
 The API has 6 endpoints, each of which have their inputs/outputs documented thoroughly in [main.py](https://github.com/Zakinator123/name-game/blob/master/app/main.py):
 
@@ -63,23 +63,23 @@ Here is a sample JSON response returned by the `/game` endpoint when a `game_typ
 ```
 
 
-
-
-# Design Approach
-When planning out the endpoints, inputs, and outputs of the API, I tried to imagine myself as an application developer using my API. I drew several state diagrams representing the different 'pages' or 'views' of game application variants using my API, and thought about all the possible state transitions that could occur from each page, as well as what data I would need to retrieve/submit during each of those state-transitions.
-
-As per directions, I strove to make the API as simple as possible for the client application - no endpoint requires more than two inputs.
-
-
 # Infrastructure
 The Name Game API is served by a Flask app running on a [docker container](https://hub.docker.com/r/zakinator123/name-game/~/dockerfile/) and is reliant on a MySQL database.
 
 ### Production Infrastructure
 The Name Game API is currently deployed on AWS and is highly available and durable. It is running on two containers in AWS Elastic Beanstalk, each of which are in different availability zones. These containers are behind an Elastic Load Balancer that handles SSL Termination and are also in an auto-scaling group that can scale the deployment to five containers if traffic becomes heavy (you never know!). Both containers are using a MySQL database running on RDS.
 
-### Continous Integration and Testing
-Upon pushes to Github, a Travis CI build is triggered. Travis launches a MySQL container, initializes tables/data, and then launches a container for the Name Game API. Lastly, it runs several unit tests on the API endpoints, and upon successful testing, triggers a Dockerhub build that's subsequently used by the Elastic Beanstalk deployment.
+![AWS EBS](./AWS.png)
 
+
+### Continous Integration and Testing
+Upon pushes to Github, a Travis CI build is triggered. Travis launches a MySQL container, initializes tables/data, and then launches a container for the Name Game API. Lastly, it runs several unit tests on the API endpoints, and upon successful testing, triggers a Dockerhub build that's subsequently used by the Elastic Beanstalk deployment. You can see the latest Travis CI build [here](https://travis-ci.org/Zakinator123/name-game)
+
+
+# Design Approach
+When planning out the endpoints, inputs, and outputs of the API, I tried to imagine myself as an application developer using my API. I drew several state diagrams representing the different 'pages' or 'views' of game application variants using my API, and thought about all the possible state transitions that could occur from each page, as well as what data I would need to retrieve/submit during each of those state-transitions.
+
+As per directions, I strove to make the API as simple as possible for the client application - no endpoint requires more than two inputs.
 
 
 # Database Schema
