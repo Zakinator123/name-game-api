@@ -3,7 +3,7 @@
 <h5 style="text-align: center"> https://api.the-name-game.com </h4>
 
 
-The Name Game API is a simple JSON API that can be used together with any simple client (e.g. a mobile app, or web app) to build a full game that familiarizes its users with WillowTree's employees. You can view a React SPA I built on top of this API [here](https://the-name_game.com) ([Github Repo here](https://github.com/Zakinator123/name-game/)). The API manages user authentication/sessions, game question formulation based on game modes, answer submission handling, user game session statistics tracking, and more.
+The Name Game API is a simple JSON API that can be used together with any simple client (e.g. a mobile app, or web app) to build a full game that familiarizes its users with WillowTree's employees. You can view a React SPA I built on top of this API [here](https://github.com/Zakinator123/name-game/). The API manages user authentication/sessions, game question formulation based on game modes, answer submission handling, user game session statistics tracking, and more.
 
 The API has 6 endpoints, each of which have their inputs/outputs documented thoroughly in [main.py](https://github.com/Zakinator123/name-game/blob/master/app/main.py):
 
@@ -73,7 +73,7 @@ The Name Game API is currently deployed on AWS and is highly available and durab
 
 
 ### Continous Integration and Testing
-Upon pushes to Github, a Travis CI build is triggered. Travis launches a MySQL container, initializes tables/data, and then launches a container for the Name Game API. Lastly, it runs several unit tests on the API endpoints, and upon successful testing, triggers a Dockerhub build that's subsequently used by the Elastic Beanstalk deployment. You can see the latest Travis CI build [here](https://travis-ci.org/Zakinator123/name-game)
+Upon pushes to Github, a Travis CI build is triggered. Travis launches a MySQL container, initializes tables/data, and then launches a container for the Name Game API. Lastly, it runs several unit tests on the API endpoints, and upon successful testing, triggers a Dockerhub build that's subsequently used by the Elastic Beanstalk deployment. You can see the travis script I used [here](.travis.yml)
 
 
 # Design Approach
